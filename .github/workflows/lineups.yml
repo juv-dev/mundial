@@ -1,0 +1,38 @@
+name: Scrape lineups
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape-lineups
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Scrape World Cup lineups
+        run: node scripts/scrape-lineups.mjs
+
+      - name: Commit updated lineups
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- public/lineups.json; then
+            echo "No lineup changes"
+          else
+            git add public/lineups.json
+            git commit -m "chore: update lineups"
+            git push
+          fi

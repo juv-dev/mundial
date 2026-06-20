@@ -1,0 +1,68 @@
+name: Workflow PR
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  vulnerability-scan:
+    name: vulnerability-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/vulnerability-scan@main
+
+  supply-chain:
+    name: supply-chain
+    needs: vulnerability-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/supply-chain@main
+
+  load-values:
+    name: load-values
+    needs: supply-chain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.values.outputs.version }}
+      name: ${{ steps.values.outputs.name }}
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/load-values@main
+        id: values
+
+  unit-test:
+    name: unit-test
+    needs: load-values
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/unit-test@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  code-quality:
+    name: code-quality
+    needs: unit-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/code-quality@main
+
+  validate-tag:
+    name: validate-tag
+    needs: code-quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/validate-tag@main

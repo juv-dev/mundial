@@ -1,0 +1,25 @@
+node_modules
+dist
+dist-ssr
+coverage
+*.local
+.env
+.DS_Store
+
+
+# Extra Rules
+.agent/
+.agents/
+.atl/
+.claude/
+.continue/
+.env*.local
+.github/copilot-instructions.md
+.github/instructions/*.md
+.vercel
+CLAUDE.md
+openspec.config.yaml
+openspec/
+skills-lock.json
+skills/
+best-practices.md
