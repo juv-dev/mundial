@@ -1,0 +1,27 @@
+name: Workflow Security Scan
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 0'
+
+jobs:
+  vulnerability-scan:
+    name: vulnerability-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/vulnerability-scan@main
+
+  code-quality:
+    name: code-quality
+    needs: vulnerability-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: juv-dev/workflows-frontend/.github/actions/code-quality@main
