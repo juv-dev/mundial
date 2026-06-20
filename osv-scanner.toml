@@ -1,0 +1,64 @@
+# Build and test tooling only (vite, vitest, esbuild, postcss). These run at
+# build/CI time and are never part of the deployed bundle, so they carry no
+# production exposure. The only runtime dependencies shipped to users are
+# react and react-dom. Revisit when bumping the Vite 5 / Vitest 2 toolchain.
+
+[[IgnoredVulns]]
+id = "GHSA-5xrq-8626-4rwp"
+reason = "vitest dev API server RCE; test tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+reason = "esbuild dev server; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-qx2v-qp2m-jg93"
+reason = "postcss; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-356w-63v5-8wf4"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-4r4m-qw57-chr8"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-4w7w-66w2-5vf9"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-859w-5945-r5v3"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-93m4-6634-74q7"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-fx2h-pf6j-xcff"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-g4jq-h2w9-997c"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-jqfw-vq24-v9c3"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-v6wh-96g9-6wx3"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-vg6x-rcgg-rjx6"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-x574-m823-4x7w"
+reason = "vite; build tooling only, not deployed."
+
+[[IgnoredVulns]]
+id = "GHSA-xcj6-pq6g-qj4x"
+reason = "vite; build tooling only, not deployed."
