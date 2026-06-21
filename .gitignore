@@ -2,6 +2,7 @@ node_modules
 dist
 dist-ssr
 coverage
+*.tsbuildinfo
 *.local
 .env
 .DS_Store

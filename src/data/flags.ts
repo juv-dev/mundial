@@ -47,6 +47,17 @@ export const CODE_TO_ISO: Record<string, string> = {
   PER: 'pe',
   COD: 'cd',
   CUW: 'cw',
+  RSA: 'za',
+  CZE: 'cz',
+  BIH: 'ba',
+  HAI: 'ht',
+  SCO: 'gb-sct',
+  PAR: 'py',
+  TUR: 'tr',
+  CPV: 'cv',
+  IRQ: 'iq',
+  NOR: 'no',
+  JOR: 'jo',
 }
 
 export function flagUrl(code: string): string | null {
@@ -126,10 +137,6 @@ for (const key in TEAMS) {
   const t = TEAMS[key]
   ISO_BY_NAME[key] = t.iso
   ISO_BY_NAME[normalize(t.es)] = t.iso
-}
-
-export function teamNameEs(name: string): string {
-  return TEAMS[normalize(name)]?.es ?? name
 }
 
 export function flagUrlByName(name: string): string | null {
