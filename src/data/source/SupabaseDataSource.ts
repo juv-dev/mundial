@@ -135,6 +135,14 @@ export class SupabaseDataSource implements DataSource {
       return { ok: false, conflict: true, current: rowToMatch(current as DbRow) }
     }
 
+    const saved = rowToMatch(updated[0] as DbRow)
+    this.snapshot = {
+      ...this.snapshot,
+      matches: this.snapshot.matches.map((m) => (m.id === saved.id ? saved : m)),
+      updatedAt: Date.now(),
+    }
+    this.notify()
+
     return { ok: true }
   }
 

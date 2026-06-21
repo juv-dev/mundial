@@ -56,19 +56,32 @@ export class SupabasePredictionSource implements PredictionSource {
     awayScore: number,
     penalties: [number, number] | undefined,
   ): Promise<SavePrediction> {
-    const { error } = await supabase.from('predictions').upsert(
-      {
-        participant,
-        match_id: matchId,
-        home_score: homeScore,
-        away_score: awayScore,
-        home_pens: penalties?.[0] ?? null,
-        away_pens: penalties?.[1] ?? null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'participant,match_id' },
-    )
+    const { data, error } = await supabase
+      .from('predictions')
+      .upsert(
+        {
+          participant,
+          match_id: matchId,
+          home_score: homeScore,
+          away_score: awayScore,
+          home_pens: penalties?.[0] ?? null,
+          away_pens: penalties?.[1] ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'participant,match_id' },
+      )
+      .select()
     if (error) return { ok: false, error: error.message }
+
+    if (data && data.length > 0) {
+      const saved = rowToPrediction(data[0] as DbPrediction)
+      const others = this.predictions.filter(
+        (p) => !(p.participant === saved.participant && p.matchId === saved.matchId),
+      )
+      this.predictions = [...others, saved]
+      this.notify()
+    }
+
     return { ok: true }
   }
 }
