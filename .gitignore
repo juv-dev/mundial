@@ -2,24 +2,27 @@ node_modules
 dist
 dist-ssr
 coverage
+*.tsbuildinfo
 *.local
 .env
 .DS_Store
 
 
 # Extra Rules
-.agent/
-.agents/
-.atl/
-.claude/
-.continue/
+.agent/**
+.agents/**
+.atl/**
+.claude/**
+.continue/**
 .env*.local
 .github/copilot-instructions.md
 .github/instructions/*.md
+.mockup/
 .vercel
+AGENTS.md
+best-practices.md
 CLAUDE.md
 openspec.config.yaml
-openspec/
+openspec/**
 skills-lock.json
-skills/
-best-practices.md
+skills/**

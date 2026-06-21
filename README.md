@@ -1,95 +1,113 @@
 # Mundial 2026 ⚽
 
-Web del Mundial 2026 (48 selecciones, formato real) con **simulación en vivo**:
-fase de grupos que se actualiza sola, cuadro eliminatorio que resuelve ganadores
-solo, y detalle de partido con **alineaciones, goles, estadísticas y resumen**.
+Polla del Mundial 2026 (48 selecciones, formato real): cada participante carga
+sus **pronósticos** partido por partido, y el **resultado oficial** se carga a
+mano y se comparte entre todos en vivo. Fase de grupos con tabla de posiciones
+calculada en vivo y cuadro eliminatorio que resuelve los cruces desde la tabla.
+
+No hay login: cada uno elige su nombre la primera vez y queda guardado en su
+navegador. Los datos se comparten entre dispositivos vía Supabase.
 
 ## Correr
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Abrí http://localhost:5173
+Abrí http://localhost:5173 (Vite puede usar otro puerto si está ocupado).
 
-## Datos reales — opcional y gratis (sin tarjeta)
+Necesitás un `.env` con las credenciales de Supabase (ver abajo).
 
-Por defecto corre con el **simulador**. Hay dos fuentes reales soportadas; el
-store elige sola según qué env var encuentre (prioridad: Highlightly → API-Football → mock).
+## Variables de entorno
 
-### Opción recomendada: Highlightly (datos + VIDEOS de goles)
-
-Una sola API gratis (plan Basic = 100 req/día, **sin tarjeta de crédito**) que da
-en vivo + estadísticas + cambios + **videos de highlights**.
-
-1. Registrate gratis en https://highlightly.net/ y copiá tu API key.
-2. Creá un `.env` en la raíz:
-   ```
-   VITE_HIGHLIGHTLY_KEY=tu_key_aca
-   ```
-3. Reiniciá: `npm run dev`. Aparece la pestaña **Video** en el detalle del partido.
-
-### Alternativa: API-Football (datos, sin video)
+Copiá `.env.example` a `.env` y completá:
 
 ```
-VITE_API_FOOTBALL_KEY=tu_key_aca
-```
-Registro gratis en https://dashboard.api-football.com/register (100 req/día, sin tarjeta).
-
-> ⚠️ **Sobre los videos**: los resúmenes de goles se publican **después** del
-> partido (0–48 h) porque los clips en vivo son derechos pagos de FIFA/TV. No se
-> puede elegir narración (ESPN, etc.): la API agrega clips públicos y devuelve lo
-> que haya. El adaptador ordena primero los que parezcan en español, pero no lo
-> garantiza.
->
-> ⚠️ **Cuota (100 req/día)**: el adaptador la cuida — 1 request inicial + poll de
-> en-vivo cada 90s (solo si hay partidos vivos) + detalle/videos **solo al abrir
-> un partido**, cacheado. Tope de seguridad (`maxRequests`, default 90) que corta
-> el poll antes de quemar la cuota.
->
-> ⚠️ **CORS**: si el navegador bloquea las llamadas directas a Highlightly,
-> necesitás un mini-proxy (su doc lo recomienda para ocultar la key). Avisame y te
-> lo armo.
-
-## La decisión de arquitectura (importante)
-
-```
-                            ┌─ MockDataSource        (simulador en vivo)
-UI ──► DataSource (puerto) ─┤
-                            └─ ApiFootballDataSource  (datos reales)
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key
 ```
 
-La UI depende del **puerto** `DataSource`, nunca de una implementación concreta.
-El único lugar que elige es `src/data/store.ts` — y lo hace solo según la env var.
-Eso es **inversión de dependencias** (la "D" de SOLID): la fuente de datos es un
-detalle intercambiable, no el centro del sistema.
+## Datos (Supabase)
+
+Dos tablas, con RLS abierta (sin login) y realtime activado:
+
+- **`matches`** — el resultado **oficial** de cada partido (uno solo, compartido).
+  Pre-cargado para los partidos jugados, editable/corregible por cualquiera.
+- **`predictions`** — el pronóstico de cada participante (`participant` +
+  `match_id`, único por persona y partido). Lo que carga uno no pisa lo del otro.
+
+Los equipos de eliminatorias no se cargan a mano: se resuelven desde la tabla de
+grupos (`knockout.ts`). La fase de grupos y los partidos ya jugados salen de la
+data real del torneo.
+
+### Sembrar el calendario
+
+```bash
+pnpm seed:supabase
+```
+
+Inserta los 104 partidos (72 de grupos + 32 de eliminatorias) como calendario
+base. Lee las credenciales del `.env`.
+
+## La decisión de arquitectura
+
+```
+                            ┌─ SupabaseDataSource       (resultados oficiales)
+UI ──► DataSource (puerto) ─┘
+
+UI ──► PredictionSource (puerto) ──► SupabasePredictionSource (pronósticos)
+```
+
+La UI depende de **puertos** (`DataSource`, `PredictionSource`), nunca de una
+implementación concreta. El único lugar que elige la implementación es
+`store.ts` / `predictionStore.ts`. Eso es **inversión de dependencias** (la "D"
+de SOLID): la fuente de datos es un detalle intercambiable.
+
+La lógica de negocio (tablas, escenarios de clasificación, resolución del cuadro)
+es **pura** y vive en `standings.ts` y `knockout.ts`, sin depender de la red.
+
+## Tests
+
+```bash
+pnpm test            # suite completa (Vitest)
+pnpm test:coverage   # con cobertura
+```
+
+La lógica pura está cubierta con Vitest: `standings.ts`, `knockout.ts`,
+`teamMatch.ts` y el mapeo de pronósticos.
 
 ## Estructura
 
 ```
 src/
   data/
-    types.ts              # modelo del dominio
-    worldcup2026.ts       # 48 equipos, 12 grupos, sembrado de 16avos
-    standings.ts          # cálculo PURO de tablas de grupo
-    store.ts              # composición: elige el DataSource
+    types.ts                  # modelo del dominio
+    worldcup2026.ts           # 48 equipos y 12 grupos (data real)
+    standings.ts              # tablas y escenarios de clasificación (PURO)
+    knockout.ts               # resolución del cuadro (PURO)
+    thirdsTable.ts            # mejores terceros
+    teamMatch.ts              # matching de nombres de selección
+    flags.ts                  # banderas (flagcdn) y nombres en español
+    store.ts                  # compone el DataSource (Supabase)
+    predictionStore.ts        # compone el PredictionSource (Supabase)
     source/
-      DataSource.ts       # PUERTO (interfaz)
-      MockDataSource.ts   # motor de simulación en vivo
-      ApiFootballDataSource.ts  # adaptador real (stub)
-  hooks/useTournament.ts  # puente reactivo (useSyncExternalStore)
-  components/             # UI (grupos, bracket, tarjeta, modal, ticker)
+      DataSource.ts             # PUERTO: leer + guardar resultado + realtime
+      SupabaseDataSource.ts     # adaptador de resultados oficiales (tabla matches)
+      PredictionSource.ts       # PUERTO de pronósticos
+      SupabasePredictionSource.ts # adaptador de pronósticos (tabla predictions)
+      supabaseClient.ts         # cliente Supabase desde el .env
+  hooks/                      # useTournament, useParticipant, usePredictions, useSaveResult
+  components/                 # GroupStage, Bracket, MatchCard, ParticipantPicker, shared
+  i18n/locale.tsx             # zona horaria (Perú / España) y formato de fecha
+scripts/seed-supabase.mjs     # siembra el calendario en Supabase
 ```
 
-## Qué simula el motor
+## Funcionalidad
 
-- Partidos que avanzan minuto a minuto (tick cada 2.5s)
-- Goles, penales, tarjetas amarillas/rojas
-- Estadísticas vivas (posesión, remates, córners, pases…)
-- Entretiempo
-- Penales en eliminatorias empatadas
-- **Resolución del cuadro**: el ganador de cada llave sube de ronda automáticamente
-- Flujo continuo: cuando un partido termina, arranca el siguiente
-
-> Los nombres de jugadores son genéricos: es un **simulador**, no datos oficiales.
+- **Resultado oficial:** los partidos programados se editan; los jugados quedan
+  bloqueados con un botón **Corregir** para arreglar un marcador mal cargado.
+- **Mi pronóstico:** cada participante carga el suyo; se guarda solo para él.
+- **Pronósticos de los demás:** se ven al lado, en solo lectura.
+- **Realtime:** lo que guarda otra persona aparece sin recargar.
+- **Horario:** se muestra en hora de Perú o España (selector en el encabezado).
