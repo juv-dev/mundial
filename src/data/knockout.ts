@@ -104,7 +104,7 @@ function thirdGroupsQualified(groups: Group[], matches: Match[]): string[] | nul
 
 function winner(m: Match): Team | null {
   if (m.status !== 'finished' || !m.home || !m.away) return null
-  if (m.penalties) return m.penalties[0] > m.penalties[1] ? m.home : m.away
+  if (m.homePens != null && m.awayPens != null) return m.homePens > m.awayPens ? m.home : m.away
   if (m.homeScore === m.awayScore) return null
   return m.homeScore > m.awayScore ? m.home : m.away
 }
@@ -125,7 +125,7 @@ export function buildKnockout(groups: Group[], matches: Match[]): Match[] {
       (m) =>
         m.stage === 'group' &&
         m.group === name &&
-        (m.status === 'finished' || m.status === 'live' || m.status === 'half-time'),
+        m.status === 'finished',
     )
 
   const groupTeam = (name: string, rank: number): Team | null => {
@@ -173,36 +173,26 @@ export function buildKnockout(groups: Group[], matches: Match[]): Match[] {
       homeScore: 0,
       awayScore: 0,
       status: 'scheduled',
-      minute: 0,
       kickoff,
-      events: [],
-      lineups: null,
-      stats: null,
     })
   }
 
   const source = matches.filter((m) => KO_STAGES.includes(m.stage))
-  const keyOf = (m: Match) => [m.home!.code, m.away!.code].sort().join('~')
 
   const overlay = (stage: Stage) => {
-    const pool = source.filter((m) => m.stage === stage && m.home && m.away)
     for (const m of built.values()) {
-      if (m.stage !== stage || !m.home || !m.away || m.status !== 'scheduled') continue
-      const src = pool.find((s) => keyOf(s) === keyOf(m))
+      if (m.stage !== stage) continue
+      const src = source.find((s) => s.id === m.id)
       if (!src) continue
-      m.id = src.id
-      m.home = src.home
-      m.away = src.away
       m.homeScore = src.homeScore
       m.awayScore = src.awayScore
       m.status = src.status
-      m.minute = src.minute
-      m.penalties = src.penalties
-      m.events = src.events
-      m.stats = src.stats
-      m.lineups = src.lineups
-      m.highlights = src.highlights
+      m.homePens = src.homePens
+      m.awayPens = src.awayPens
+      m.updatedAt = src.updatedAt
       m.kickoff = src.kickoff
+      if (src.home) m.home = src.home
+      if (src.away) m.away = src.away
     }
   }
 

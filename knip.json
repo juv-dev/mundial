@@ -1,11 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": [
-    "functions/**/*.ts",
-    "scripts/**/*.mjs",
-    "src/data/source/MockDataSource.ts",
-    "src/data/source/ApiFootballDataSource.ts"
-  ],
+  "entry": ["index.html", "scripts/**/*.mjs"],
   "project": ["src/**/*.{ts,tsx}"],
   "ignoreExportsUsedInFile": true
 }

@@ -2,9 +2,6 @@ import { useEffect, useState } from 'react'
 import type { Match, Team } from '../data/types'
 import { pathToGlory } from '../data/knockout'
 import { Flag, teamName } from './shared'
-import { useSquad, type SquadPlayer } from '../hooks/useSquad'
-
-type Tab = 'camino' | 'plantilla'
 
 export function CaminoModal({
   team,
@@ -21,18 +18,11 @@ export function CaminoModal({
   matches: Match[]
   onClose: () => void
 }) {
-  const [tab, setTab] = useState<Tab>(qualified ? 'camino' : 'plantilla')
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-
-  const TABS: { id: Tab; label: string }[] = [
-    { id: 'camino', label: 'Camino a la gloria' },
-    { id: 'plantilla', label: 'Plantilla' },
-  ]
 
   return (
     <div
@@ -65,26 +55,8 @@ export function CaminoModal({
           </div>
         </div>
 
-        <nav className="flex gap-1 px-5 border-b border-cal/[0.08] bg-white">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-3 py-2.5 text-sm font-medium transition border-b-2 ${
-                tab === t.id ? 'border-mag text-mag' : 'border-transparent text-tiza hover:text-cal'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
         <div className="p-5">
-          {tab === 'camino' ? (
-            <Camino team={team} group={group} position={position} qualified={qualified} matches={matches} />
-          ) : (
-            <Plantilla team={team} />
-          )}
+          <Camino team={team} group={group} position={position} qualified={qualified} matches={matches} />
         </div>
       </div>
     </div>
@@ -172,75 +144,6 @@ function Step({ round, detail, tone }: { round: string; detail: string; tone: 's
         {tone === 'glory' ? '🏆 Final' : round}
       </div>
       <div className="text-xs text-tiza mt-0.5">{detail}</div>
-    </li>
-  )
-}
-
-const GROUP_ES: Record<string, string> = {
-  Goalkeepers: 'Porteros',
-  Defenders: 'Defensas',
-  Midfielders: 'Centrocampistas',
-  Forwards: 'Delanteros',
-  Coach: 'Entrenador',
-}
-
-function Plantilla({ team }: { team: Team }) {
-  const { squad, loading } = useSquad(team.nameEn ?? team.name)
-
-  if (loading) return <p className="text-center text-sm text-tiza py-8">Cargando plantilla…</p>
-  if (!squad || squad.groups.length === 0)
-    return <p className="text-center text-sm text-tiza py-8">Plantilla no disponible todavía.</p>
-
-  return (
-    <div className="space-y-5">
-      {squad.groups.map(
-        (g) =>
-          g.players.length > 0 && (
-            <div key={g.type}>
-              <p className="text-[11px] uppercase tracking-[0.12em] text-mag font-bold mb-2">
-                {GROUP_ES[g.type] ?? g.type}
-              </p>
-              <ul className="divide-y divide-cal/[0.06]">
-                {g.players.map((pl, i) => (
-                  <PlayerRow key={`${g.type}-${i}`} player={pl} coach={g.type === 'Coach'} />
-                ))}
-              </ul>
-            </div>
-          ),
-      )}
-    </div>
-  )
-}
-
-function PlayerRow({ player, coach }: { player: SquadPlayer; coach?: boolean }) {
-  return (
-    <li className="flex items-center gap-3 py-2">
-      {!coach && (
-        <span className="w-6 text-center text-sm tabular-nums font-bold text-tiza shrink-0">
-          {player.number ?? '–'}
-        </span>
-      )}
-      {player.photo ? (
-        <img
-          src={player.photo}
-          alt=""
-          loading="lazy"
-          className="w-9 h-9 rounded-full object-cover bg-cal/10 shrink-0"
-          onError={(e) => (e.currentTarget.style.visibility = 'hidden')}
-        />
-      ) : (
-        <span className="w-9 h-9 rounded-full bg-cal/10 shrink-0" />
-      )}
-      <span className="flex-1 min-w-0 text-[15px] text-cal truncate">{player.name}</span>
-      {player.clubLogo && (
-        <img
-          src={player.clubLogo}
-          alt=""
-          loading="lazy"
-          className="w-5 h-5 object-contain shrink-0 opacity-90"
-          onError={(e) => (e.currentTarget.style.display = 'none')}
-        />
-      )}
     </li>
   )
 }

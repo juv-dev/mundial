@@ -44,15 +44,26 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       if (!iso) return ''
       const date = new Date(iso)
       if (isNaN(date.getTime())) return ''
-      return new Intl.DateTimeFormat(country.locale, {
+      const fecha = new Intl.DateTimeFormat(country.locale, {
         weekday: 'short',
-        day: '2-digit',
+        day: 'numeric',
         month: 'short',
-        hour: '2-digit',
+        timeZone: country.timeZone,
+      })
+        .format(date)
+        .replace(/\./g, '')
+        .replace(',', '')
+      const hora = new Intl.DateTimeFormat(country.locale, {
+        hour: 'numeric',
         minute: '2-digit',
         hour12: true,
         timeZone: country.timeZone,
-      }).format(date)
+      })
+        .format(date)
+        .replace(/\s*a\.?\s*m\.?/i, ' AM')
+        .replace(/\s*p\.?\s*m\.?/i, ' PM')
+        .trim()
+      return `${fecha} · ${hora}`
     },
     [country],
   )
