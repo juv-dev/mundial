@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { ListenerSet } from './ListenerSet'
 import { GROUPS, T } from '../worldcup2026'
 import type { DataSource, SaveResult } from './DataSource'
 import type { Match, Stage, Team, TournamentSnapshot } from '../types'
@@ -53,20 +54,17 @@ type ChannelRef = ReturnType<typeof supabase.channel>
 
 export class SupabaseDataSource implements DataSource {
   private snapshot: TournamentSnapshot = { groups: GROUPS, matches: [], updatedAt: 0 }
-  private listeners = new Set<() => void>()
+  private bus = new ListenerSet()
   private mainChannel: ChannelRef | null = null
 
   getSnapshot(): TournamentSnapshot {
     return this.snapshot
   }
 
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
-  }
+  subscribe = this.bus.subscribe.bind(this.bus)
 
   private notify(): void {
-    for (const l of this.listeners) l()
+    this.bus.notify()
   }
 
   private async load(): Promise<void> {
@@ -134,6 +132,14 @@ export class SupabaseDataSource implements DataSource {
       if (!current) return { ok: false, conflict: false, error: 'Match not found' }
       return { ok: false, conflict: true, current: rowToMatch(current as DbRow) }
     }
+
+    const saved = rowToMatch(updated[0] as DbRow)
+    this.snapshot = {
+      ...this.snapshot,
+      matches: this.snapshot.matches.map((m) => (m.id === saved.id ? saved : m)),
+      updatedAt: Date.now(),
+    }
+    this.notify()
 
     return { ok: true }
   }
