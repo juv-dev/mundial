@@ -1,6 +1,4 @@
-export async function onRequest(context: {
-  request: Request
-}): Promise<Response> {
+export async function onRequest(context) {
   const { request } = context
 
   if (request.method === 'OPTIONS') {
@@ -28,19 +26,10 @@ export async function onRequest(context: {
       expectedUpdatedAt,
       supabaseUrl,
       supabaseKey,
-    } = (await request.json()) as {
-      matchId: string
-      homeScore: number
-      awayScore: number
-      homePens?: number | null
-      awayPens?: number | null
-      expectedUpdatedAt: string
-      supabaseUrl: string
-      supabaseKey: string
-    }
+    } = await request.json()
 
     if (!supabaseUrl || !supabaseKey) {
-      return json({ error: 'Supabase configuration missing' }, 500)
+      return respond({ error: 'Supabase configuration missing' }, 500)
     }
 
     const url = `${supabaseUrl}/rest/v1/matches?id=eq.${encodeURIComponent(matchId)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}&select=*`
@@ -68,13 +57,13 @@ export async function onRequest(context: {
     const text = await response.text()
     const data = text ? JSON.parse(text) : null
 
-    return json(data, response.status)
+    return respond(data, response.status)
   } catch (err) {
-    return json({ error: err instanceof Error ? err.message : 'Unknown error' }, 500)
+    return respond({ error: err instanceof Error ? err.message : String(err) }, 500)
   }
 }
 
-function json(data: unknown, status = 200): Response {
+function respond(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
