@@ -103,7 +103,6 @@ export class SupabaseDataSource implements DataSource {
     homeScore: number,
     awayScore: number,
     penalties: [number, number] | undefined,
-    expectedUpdatedAt: string,
   ): Promise<SaveResult> {
     const payload = {
       home_score: homeScore,
@@ -113,43 +112,14 @@ export class SupabaseDataSource implements DataSource {
       status: 'finished' as const,
       updated_at: new Date().toISOString(),
     }
-    return this.applyUpdate(matchId, payload, expectedUpdatedAt, 'saved')
-  }
 
-  async resetResult(matchId: string): Promise<SaveResult> {
-    const payload = {
-      home_score: 0,
-      away_score: 0,
-      home_pens: null,
-      away_pens: null,
-      status: 'scheduled' as const,
-      updated_at: new Date().toISOString(),
-    }
-    return this.applyUpdate(matchId, payload, '', 'reset')
-  }
-
-  private async applyUpdate(
-    matchId: string,
-    payload: Record<string, unknown>,
-    expectedUpdatedAt: string,
-    mode: 'saved' | 'reset',
-  ): Promise<SaveResult> {
     try {
-      const updated = await (import.meta.env.DEV
-        ? this.patchDirect(matchId, payload, expectedUpdatedAt || undefined)
-        : this.patchViaProxy(matchId, expectedUpdatedAt, payload))
+      const updated = import.meta.env.DEV
+        ? await this.patchDirect(matchId, payload)
+        : await this.patchViaProxy(matchId, payload)
 
       if (!updated || updated.length === 0) {
-        if (mode === 'saved') {
-          const { data: current } = await supabase
-            .from('matches')
-            .select('*')
-            .eq('id', matchId)
-            .single()
-          if (!current) return { ok: false, conflict: false, error: 'Match not found' }
-          return { ok: false, conflict: true, current: rowToMatch(current as DbRow) }
-        }
-        return { ok: false, conflict: false, error: 'No se pudo reiniciar el resultado' }
+        return { ok: false, error: 'No se guardó el resultado' }
       }
 
       const saved = rowToMatch(updated[0] as DbRow)
@@ -162,25 +132,25 @@ export class SupabaseDataSource implements DataSource {
 
       return { ok: true }
     } catch (err) {
-      return { ok: false, conflict: false, error: err instanceof Error ? err.message : String(err) }
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   }
 
   private async patchDirect(
     matchId: string,
     payload: Record<string, unknown>,
-    expectedUpdatedAt?: string,
   ): Promise<DbRow[]> {
-    let query = supabase.from('matches').update(payload).eq('id', matchId)
-    if (expectedUpdatedAt) query = query.eq('updated_at', expectedUpdatedAt)
-    const { data, error } = await query.select()
+    const { data, error } = await supabase
+      .from('matches')
+      .update(payload)
+      .eq('id', matchId)
+      .select()
     if (error) throw error
     return (data ?? []) as DbRow[]
   }
 
   private async patchViaProxy(
     matchId: string,
-    expectedUpdatedAt: string,
     payload: Record<string, unknown>,
   ): Promise<DbRow[]> {
     const res = await fetch('/api/save-result', {
@@ -188,7 +158,6 @@ export class SupabaseDataSource implements DataSource {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         matchId,
-        expectedUpdatedAt,
         supabaseUrl,
         supabaseKey: SUPABASE_ANON_KEY,
         ...payload,

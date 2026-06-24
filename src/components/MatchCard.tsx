@@ -6,7 +6,7 @@ import { useSaveResult } from '../hooks/useSaveResult'
 
 export function MatchCard({ match }: { match: Match }) {
   const { formatDateTime } = useLocale()
-  const { save, reset, saving, conflict, error, clearConflict, clearError } = useSaveResult()
+  const { save, saving, error, clearError } = useSaveResult()
 
   const [editingOfficial, setEditingOfficial] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
@@ -30,14 +30,12 @@ export function MatchCard({ match }: { match: Match }) {
     setOfficialAway(String(match.awayScore))
     setOfficialPenHome(match.homePens != null ? String(match.homePens) : '')
     setOfficialPenAway(match.awayPens != null ? String(match.awayPens) : '')
-    clearConflict()
     clearError()
     setEditingOfficial(true)
   }
 
   const cancelEditOfficial = () => {
     setEditingOfficial(false)
-    clearConflict()
     clearError()
   }
 
@@ -49,19 +47,20 @@ export function MatchCard({ match }: { match: Match }) {
     const pa = parseInt(officialPenAway, 10)
     const pens: [number, number] | undefined =
       isKnockout && Number.isFinite(ph) && Number.isFinite(pa) && h === a ? [ph, pa] : undefined
-    const ok = await save(match.id, h, a, pens, match.updatedAt ?? '')
+    const ok = await save(match.id, h, a, pens)
     if (ok) {
       setEditingOfficial(false)
       setJustSaved(true)
     }
   }
 
-  const handleReset = async () => {
-    const ok = await reset(match.id)
-    if (ok) {
-      setEditingOfficial(false)
-      setJustSaved(true)
-    }
+  const handleReset = () => {
+    setOfficialHome('')
+    setOfficialAway('')
+    setOfficialPenHome('')
+    setOfficialPenAway('')
+    clearError()
+    setEditingOfficial(true)
   }
 
   const showOfficialInputs = (!finished && !justSaved) || editingOfficial
@@ -149,11 +148,6 @@ export function MatchCard({ match }: { match: Match }) {
                 </div>
               )}
 
-            {conflict && (
-              <p className="text-[11px] text-rojo mb-2 text-center">
-                Actualizado en otro dispositivo ({conflict.homeScore}–{conflict.awayScore}). Recarga la página.
-              </p>
-            )}
             {error && (
               <p className="text-[11px] text-rojo mb-2 text-center">{error}</p>
             )}
