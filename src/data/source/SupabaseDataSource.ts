@@ -65,10 +65,6 @@ export class SupabaseDataSource implements DataSource {
 
   subscribe = this.bus.subscribe.bind(this.bus)
 
-  private notify(): void {
-    this.bus.notify()
-  }
-
   private async load(): Promise<void> {
     const { data, error } = await supabase
       .from('matches')
@@ -80,7 +76,7 @@ export class SupabaseDataSource implements DataSource {
       matches: (data as DbRow[]).map(rowToMatch),
       updatedAt: Date.now(),
     }
-    this.notify()
+    this.bus.notify()
   }
 
   start(): void {
@@ -138,7 +134,7 @@ export class SupabaseDataSource implements DataSource {
       matches: this.snapshot.matches.map((m) => (m.id === saved.id ? saved : m)),
       updatedAt: Date.now(),
     }
-    this.notify()
+    this.bus.notify()
 
     return { ok: true }
   }
