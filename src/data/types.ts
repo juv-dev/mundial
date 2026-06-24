@@ -58,13 +58,3 @@ export interface TournamentSnapshot {
   matches: Match[]
   updatedAt: number
 }
-
-export interface Prediction {
-  participant: string
-  matchId: string
-  homeScore: number
-  awayScore: number
-  homePens?: number
-  awayPens?: number
-  updatedAt?: string
-}

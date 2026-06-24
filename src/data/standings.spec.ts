@@ -1,40 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { teamForm, computeStandings, bestThirds } from './standings'
-import type { Group, Match, Team } from './types'
-
-function team(code: string, name = code): Team {
-  return { code, name, flag: '' }
-}
-
-function group(name: string, codes: string[]): Group {
-  return { name, teams: codes.map((c) => team(c)) }
-}
-
-function match(over: Partial<Match> & { id: string }): Match {
-  return {
-    stage: 'group',
-    home: null,
-    away: null,
-    homeScore: 0,
-    awayScore: 0,
-    status: 'scheduled',
-    kickoff: '',
-    ...over,
-  }
-}
-
-function finished(id: string, groupName: string, home: string, away: string, hs: number, as: number, utcDate?: string): Match {
-  return match({
-    id,
-    group: groupName,
-    home: team(home),
-    away: team(away),
-    homeScore: hs,
-    awayScore: as,
-    status: 'finished',
-    utcDate,
-  })
-}
+import type { Match, Group } from './types'
+import { team, group, match, finished } from './test-helpers'
 
 function scheduled(id: string, groupName: string, home: string, away: string): Match {
   return match({ id, group: groupName, home: team(home), away: team(away), status: 'scheduled' })
@@ -79,7 +46,7 @@ describe('teamForm', () => {
 
 describe('computeStandings', () => {
   it('should award points and order by points, goal difference and goals for', () => {
-    const g = group('A', ['T1', 'T2', 'T3'])
+    const g: Group = group('A', ['T1', 'T2', 'T3'])
     const matches: Match[] = [
       finished('1', 'A', 'T1', 'T2', 2, 0),
       finished('2', 'A', 'T2', 'T3', 1, 1),
@@ -92,7 +59,7 @@ describe('computeStandings', () => {
   })
 
   it('should count finished matches but skip other groups and incomplete matches', () => {
-    const g = group('A', ['T1', 'T2'])
+    const g: Group = group('A', ['T1', 'T2'])
     const matches: Match[] = [
       match({ id: '1', group: 'A', home: team('T1'), away: team('T2'), homeScore: 1, awayScore: 0, status: 'finished' }),
       finished('2', 'B', 'T1', 'T2', 5, 0),
@@ -108,9 +75,9 @@ describe('computeStandings', () => {
 
 describe('bestThirds', () => {
   it('should collect the eight best third-placed teams across groups', () => {
-    const gA = group('A', ['A1', 'A2', 'A3'])
-    const gB = group('B', ['B1', 'B2', 'B3'])
-    const short = group('C', ['C1', 'C2'])
+    const gA: Group = group('A', ['A1', 'A2', 'A3'])
+    const gB: Group = group('B', ['B1', 'B2', 'B3'])
+    const short: Group = group('C', ['C1', 'C2'])
     const matches: Match[] = [
       finished('1', 'A', 'A1', 'A2', 1, 0),
       finished('2', 'A', 'A2', 'A3', 1, 0),

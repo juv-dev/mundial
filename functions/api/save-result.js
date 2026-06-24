@@ -7,7 +7,7 @@ export async function onRequest(context) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '86400',
+        'Access-Control-Max-Age': '8644600',
       },
     })
   }
@@ -32,7 +32,12 @@ export async function onRequest(context) {
       return respond({ error: 'Supabase configuration missing' }, 500)
     }
 
-    const url = `${supabaseUrl}/rest/v1/matches?id=eq.${encodeURIComponent(matchId)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}&select=*`
+    const hasFilter = expectedUpdatedAt != null && expectedUpdatedAt !== ''
+    const filterParam = hasFilter
+      ? `&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`
+      : ''
+
+    const url = `${supabaseUrl}/rest/v1/matches?id=eq.${encodeURIComponent(matchId)}${filterParam}&select=*`
 
     const body = {
       home_score: homeScore,
@@ -55,13 +60,20 @@ export async function onRequest(context) {
       body: JSON.stringify(body),
     })
 
-    let data = null
-    if (response.status !== 204) {
-      const text = await response.text()
-      data = text ? JSON.parse(text) : null
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      let detail = ''
+      try { detail = JSON.parse(text) } catch { detail = text }
+      return respond({ error: `Supabase PATCH failed: ${response.status}`, detail }, response.status)
     }
 
-    return respond(data, response.status)
+    const text = await response.text()
+    if (!text) return respond([], 200)
+
+    const data = JSON.parse(text)
+    if (!Array.isArray(data) || data.length === 0) return respond([], 200)
+
+    return respond(data, 200)
   } catch (err) {
     return respond({ error: err instanceof Error ? err.message : String(err) }, 500)
   }
