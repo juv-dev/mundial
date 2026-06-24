@@ -2,29 +2,20 @@ import { useState, useEffect, useRef } from 'react'
 import type { Match } from '../data/types'
 import { Flag, teamName } from './shared'
 import { useLocale } from '../i18n/locale'
-import { useSaveResult } from '../hooks/useSaveResult'
 import { useParticipant } from '../hooks/useParticipant'
 import { usePredictions } from '../hooks/usePredictions'
 
 export function MatchCard({ match }: { match: Match }) {
   const { formatDateTime } = useLocale()
-  const { save, saving, conflict, error, clearConflict, clearError } = useSaveResult()
   const { participant } = useParticipant()
   const { predictions, allParticipants, upsert } = usePredictions()
-
-  const [editingOfficial, setEditingOfficial] = useState(false)
-  const [justSaved, setJustSaved] = useState(false)
-  const [officialHome, setOfficialHome] = useState('')
-  const [officialAway, setOfficialAway] = useState('')
-  const [officialPenHome, setOfficialPenHome] = useState('')
-  const [officialPenAway, setOfficialPenAway] = useState('')
 
   const [predHome, setPredHome] = useState('')
   const [predAway, setPredAway] = useState('')
   const [predPenHome, setPredPenHome] = useState('')
   const [predPenAway, setPredPenAway] = useState('')
-  const [savingPred, setSavingPred] = useState(false)
-  const [predError, setPredError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const predSeededRef = useRef(false)
 
   const finished = match.status === 'finished'
@@ -56,43 +47,7 @@ export function MatchCard({ match }: { match: Match }) {
     }
   }, [myPred])
 
-  useEffect(() => {
-    setJustSaved(false)
-    clearError()
-  }, [match])
-
-  const startEditOfficial = () => {
-    setOfficialHome(String(match.homeScore))
-    setOfficialAway(String(match.awayScore))
-    setOfficialPenHome(match.homePens != null ? String(match.homePens) : '')
-    setOfficialPenAway(match.awayPens != null ? String(match.awayPens) : '')
-    clearConflict()
-    clearError()
-    setEditingOfficial(true)
-  }
-
-  const cancelEditOfficial = () => {
-    setEditingOfficial(false)
-    clearConflict()
-    clearError()
-  }
-
-  const handleSaveOfficial = async () => {
-    const h = parseInt(officialHome, 10)
-    const a = parseInt(officialAway, 10)
-    if (!Number.isFinite(h) || !Number.isFinite(a)) return
-    const ph = parseInt(officialPenHome, 10)
-    const pa = parseInt(officialPenAway, 10)
-    const pens: [number, number] | undefined =
-      isKnockout && Number.isFinite(ph) && Number.isFinite(pa) && h === a ? [ph, pa] : undefined
-    const ok = await save(match.id, h, a, pens, match.updatedAt ?? '')
-    if (ok) {
-      setEditingOfficial(false)
-      setJustSaved(true)
-    }
-  }
-
-  const handleSavePrediction = async () => {
+  const handleSave = async () => {
     if (!participant) return
     const h = parseInt(predHome, 10)
     const a = parseInt(predAway, 10)
@@ -101,30 +56,23 @@ export function MatchCard({ match }: { match: Match }) {
     const pa = parseInt(predPenAway, 10)
     const pens: [number, number] | undefined =
       isKnockout && Number.isFinite(ph) && Number.isFinite(pa) && h === a ? [ph, pa] : undefined
-    setSavingPred(true)
+    setSaving(true)
+    setError(null)
     const result = await upsert(participant, match.id, h, a, pens)
-    setSavingPred(false)
+    setSaving(false)
     if (!result.ok) {
-      setPredError(result.error)
-    } else {
-      setPredError(null)
+      setError(result.error)
     }
   }
 
-  const showOfficialInputs = (!finished && !justSaved) || editingOfficial
-
-  const scoreInput = (value: string, onChange: (v: string) => void, size: 'lg' | 'sm' = 'lg') => (
+  const scoreInput = (value: string, onChange: (v: string) => void) => (
     <input
       type="text"
       inputMode="numeric"
       value={value}
       onChange={(e) => onChange(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))}
       placeholder="–"
-      className={
-        size === 'lg'
-          ? 'w-10 h-8 text-center bg-cal/[0.06] border border-cal/[0.14] rounded-lg text-cal font-display text-2xl tabular-nums placeholder:text-tiza/40 focus:border-mag focus:outline-none'
-          : 'w-9 h-7 text-center bg-cal/[0.06] border border-cal/[0.14] rounded text-cal font-display text-lg tabular-nums placeholder:text-tiza/40 focus:border-verde focus:outline-none'
-      }
+      className="w-9 h-7 text-center bg-cal/[0.06] border border-cal/[0.14] rounded text-cal font-display text-lg tabular-nums placeholder:text-tiza/40 focus:border-verde focus:outline-none"
     />
   )
 
@@ -175,101 +123,41 @@ export function MatchCard({ match }: { match: Match }) {
         <span className="text-[9px] uppercase tracking-[0.12em] text-tiza/50 font-semibold mb-2 block">
           Resultado oficial
         </span>
-
-        {showOfficialInputs && playable ? (
-          <>
-            <div className="flex items-center justify-center gap-1.5 mb-2">
-              {scoreInput(officialHome, setOfficialHome)}
-              <span className="text-tiza/40">–</span>
-              {scoreInput(officialAway, setOfficialAway)}
-            </div>
-
-            {isKnockout &&
-              officialHome !== '' &&
-              officialAway !== '' &&
-              parseInt(officialHome, 10) === parseInt(officialAway, 10) && (
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-[11px] text-tiza">Penales:</span>
-                  {scoreInput(officialPenHome, setOfficialPenHome)}
-                  <span className="text-tiza/40 text-xs">–</span>
-                  {scoreInput(officialPenAway, setOfficialPenAway)}
-                </div>
-              )}
-
-            {conflict && (
-              <p className="text-[11px] text-rojo mb-2 text-center">
-                Actualizado en otro dispositivo ({conflict.homeScore}–{conflict.awayScore}). Recarga la página.
-              </p>
-            )}
-            {error && (
-              <p className="text-[11px] text-rojo mb-2 text-center">{error}</p>
-            )}
-
-            <div className="flex gap-2">
-              {editingOfficial && (
-                <button
-                  onClick={cancelEditOfficial}
-                  className="flex-1 py-1.5 rounded-lg text-sm font-semibold text-tiza bg-cal/[0.06] hover:bg-cal/[0.12] transition"
-                >
-                  Cancelar
-                </button>
-              )}
-              <button
-                onClick={handleSaveOfficial}
-                disabled={saving || officialHome === '' || officialAway === ''}
-                className="flex-1 py-1.5 rounded-lg text-sm font-semibold text-white bg-mag hover:bg-mag/80 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {saving ? 'Guardando…' : 'Guardar resultado'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-between">
-            <span className="font-display text-3xl tabular-nums text-cal">
-              {match.homeScore}–{match.awayScore}
-            </span>
-            {match.homePens != null && match.awayPens != null && (
-              <span className="text-[11px] text-tiza">pen {match.homePens}–{match.awayPens}</span>
-            )}
-            {playable && (
-              <button
-                onClick={startEditOfficial}
-                className="text-[11px] font-semibold text-mag border border-mag/30 rounded-lg px-3 py-1 hover:bg-mag/10 transition"
-              >
-                Corregir
-              </button>
-            )}
-          </div>
+        <span className="font-display text-3xl tabular-nums text-cal">
+          {match.homeScore}–{match.awayScore}
+        </span>
+        {match.homePens != null && match.awayPens != null && (
+          <span className="text-[11px] text-tiza ml-2">pen {match.homePens}–{match.awayPens}</span>
         )}
       </div>
 
       {playable && (
         <div className="border-t border-cal/[0.08] pt-3 mb-3">
           <span className="text-[9px] uppercase tracking-[0.12em] text-tiza/50 font-semibold mb-2 block">
-            Mi pronóstico
+            {participant ? `Resultado de ${participant}` : 'Tu resultado'}
           </span>
 
           {!participant ? (
             <p className="text-[11px] text-tiza/60">
-              Configura tu nombre en el encabezado para guardar pronósticos.
+              Configura tu nombre en el encabezado para guardar tu resultado.
             </p>
           ) : (
             <>
               <div className="flex items-center gap-1.5 mb-2">
-                {scoreInput(predHome, setPredHome, 'sm')}
+                {scoreInput(predHome, setPredHome)}
                 <span className="text-tiza/40 text-xs">–</span>
-                {scoreInput(predAway, setPredAway, 'sm')}
+                {scoreInput(predAway, setPredAway)}
                 <button
-                  onClick={handleSavePrediction}
-                  disabled={savingPred || predHome === '' || predAway === ''}
+                  onClick={handleSave}
+                  disabled={saving || predHome === '' || predAway === ''}
                   className="ml-1 px-3 py-1 rounded-lg text-xs font-semibold text-white bg-verde hover:bg-verde/80 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  {savingPred ? '…' : 'Guardar'}
+                  {saving ? '…' : 'Guardar'}
                 </button>
               </div>
 
-              {predError && (
-                <p className="text-[11px] text-rojo mb-2 text-center">{predError}</p>
+              {error && (
+                <p className="text-[11px] text-rojo mb-2 text-center">{error}</p>
               )}
 
               {isKnockout &&
@@ -278,9 +166,9 @@ export function MatchCard({ match }: { match: Match }) {
                 parseInt(predHome, 10) === parseInt(predAway, 10) && (
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-[11px] text-tiza">Penales:</span>
-                    {scoreInput(predPenHome, setPredPenHome, 'sm')}
+                    {scoreInput(predPenHome, setPredPenHome)}
                     <span className="text-tiza/40 text-xs">–</span>
-                    {scoreInput(predPenAway, setPredPenAway, 'sm')}
+                    {scoreInput(predPenAway, setPredPenAway)}
                   </div>
                 )}
             </>
@@ -291,11 +179,11 @@ export function MatchCard({ match }: { match: Match }) {
       {playable && (
         <div className="border-t border-cal/[0.08] pt-3">
           <span className="text-[9px] uppercase tracking-[0.12em] text-tiza/50 font-semibold mb-2 block">
-            Pronósticos
+            Resultados de otros
           </span>
 
           {otherParticipants.length === 0 ? (
-            <p className="text-[11px] text-tiza/50">Sin pronósticos aún.</p>
+            <p className="text-[11px] text-tiza/50">Sin resultados aún.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {otherParticipants.map((name) => {
@@ -316,7 +204,7 @@ export function MatchCard({ match }: { match: Match }) {
                           : ''}
                       </>
                     ) : (
-                      <span className="text-tiza/40">sin pronóstico</span>
+                      <span className="text-tiza/40">sin resultado</span>
                     )}
                   </span>
                 )
