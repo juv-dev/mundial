@@ -1,4 +1,3 @@
-/** Lightweight pub/sub helper to avoid duplicating the listener-set pattern across sources. */
 export class ListenerSet {
   private listeners = new Set<() => void>()
 

@@ -1,8 +1,10 @@
-import { supabase } from './supabaseClient'
+import { supabase, supabaseUrl } from './supabaseClient'
 import { ListenerSet } from './ListenerSet'
 import { GROUPS, T } from '../worldcup2026'
 import type { DataSource, SaveResult } from './DataSource'
 import type { Match, Stage, Team, TournamentSnapshot } from '../types'
+
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 interface DbRow {
   id: string
@@ -107,21 +109,18 @@ export class SupabaseDataSource implements DataSource {
     penalties: [number, number] | undefined,
     expectedUpdatedAt: string,
   ): Promise<SaveResult> {
-    const { data: updated, error: updateError } = await supabase
-      .from('matches')
-      .update({
-        home_score: homeScore,
-        away_score: awayScore,
-        home_pens: penalties?.[0] ?? null,
-        away_pens: penalties?.[1] ?? null,
-        status: 'finished',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', matchId)
-      .eq('updated_at', expectedUpdatedAt)
-      .select()
+    const updatePayload = {
+      home_score: homeScore,
+      away_score: awayScore,
+      home_pens: penalties?.[0] ?? null,
+      away_pens: penalties?.[1] ?? null,
+      status: 'finished' as const,
+      updated_at: new Date().toISOString(),
+    }
 
-    if (updateError) return { ok: false, conflict: false, error: updateError.message }
+    const updated = await (import.meta.env.DEV
+      ? this.patchDirect(matchId, expectedUpdatedAt, updatePayload)
+      : this.patchViaProxy(matchId, expectedUpdatedAt, updatePayload))
 
     if (!updated || updated.length === 0) {
       const { data: current } = await supabase
@@ -142,6 +141,44 @@ export class SupabaseDataSource implements DataSource {
     this.notify()
 
     return { ok: true }
+  }
+
+  private async patchDirect(
+    matchId: string,
+    expectedUpdatedAt: string,
+    payload: Record<string, unknown>,
+  ): Promise<DbRow[]> {
+    const { data, error } = await supabase
+      .from('matches')
+      .update(payload)
+      .eq('id', matchId)
+      .eq('updated_at', expectedUpdatedAt)
+      .select()
+    if (error) throw error
+    return (data ?? []) as DbRow[]
+  }
+
+  private async patchViaProxy(
+    matchId: string,
+    expectedUpdatedAt: string,
+    payload: Record<string, unknown>,
+  ): Promise<DbRow[]> {
+    const res = await fetch('/api/save-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        matchId,
+        expectedUpdatedAt,
+        supabaseUrl,
+        supabaseKey: SUPABASE_ANON_KEY,
+        ...payload,
+      }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      throw new Error(body?.error ?? `save-result proxy returned ${res.status}`)
+    }
+    return (await res.json()) as DbRow[]
   }
 
 }

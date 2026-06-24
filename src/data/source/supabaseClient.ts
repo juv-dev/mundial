@@ -9,10 +9,7 @@ if (!supabaseUrl || !key) {
   )
 }
 
-// In development, route ALL Supabase HTTP requests through the Vite dev server
-// to avoid CORS preflight issues with the Supabase/Cloudflare gateway.
-// The proxy rewrites /__supabase/… → /… and targets the Supabase origin.
-// Auth and Realtime WebSocket connections also go through the proxy.
 const url = import.meta.env.DEV ? `${window.location.origin}/__supabase` : supabaseUrl
 
+export { supabaseUrl }
 export const supabase = createClient(url, key)
