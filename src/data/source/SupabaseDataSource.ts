@@ -183,19 +183,19 @@ export class SupabaseDataSource implements DataSource {
   private async patchViaProxy(
     matchId: string,
     payload: Record<string, unknown>,
-    resetOnly = false,
+    resetOnly = false,   
   ): Promise<DbRow[]> {
-    const res = await fetch('/api/save-result', {
+      const res = await fetch('/api/save-result', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         matchId,
         supabaseUrl,
         supabaseKey: SUPABASE_ANON_KEY,
-        resetOnly,
+        resetOnly, 
         ...payload,
       }),
-    })
+  })
     if (!res.ok) {
       const body = await res.json().catch(() => null)
       throw new Error(body?.error ?? `save-result proxy returned ${res.status}`)

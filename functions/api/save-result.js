@@ -20,7 +20,7 @@ export async function onRequest(context) {
     const raw = await request.json()
     const { matchId, supabaseUrl, supabaseKey } = raw
 
-    // Accept both camelCase (homeScore) and snake_case (home_score) from the client
+
     const homeScore = raw.homeScore ?? raw.home_score ?? null
     const awayScore = raw.awayScore ?? raw.away_score ?? null
     const homePens  = raw.homePens  ?? raw.home_pens  ?? null
