@@ -7,7 +7,6 @@ import { CaminoModal } from './components/CaminoModal'
 import { FeaturedMatches } from './components/FeaturedMatches'
 import { ParticipantPicker } from './components/ParticipantPicker'
 import { source, sourceLabel } from './data/store'
-import { predictionSource } from './data/predictionStore'
 import { buildKnockout } from './data/knockout'
 import type { Team } from './data/types'
 import { useLocale, type CountryKey } from './i18n/locale'
@@ -31,10 +30,8 @@ export default function App() {
 
   useEffect(() => {
     source.start()
-    predictionSource.start()
     return () => {
       source.stop()
-      predictionSource.stop()
     }
   }, [])
 
