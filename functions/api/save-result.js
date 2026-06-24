@@ -50,12 +50,16 @@ export async function onRequest(context) {
         Authorization: `Bearer ${supabaseKey}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        Prefer: 'return=representation',
       },
       body: JSON.stringify(body),
     })
 
-    const text = await response.text()
-    const data = text ? JSON.parse(text) : null
+    let data = null
+    if (response.status !== 204) {
+      const text = await response.text()
+      data = text ? JSON.parse(text) : null
+    }
 
     return respond(data, response.status)
   } catch (err) {
