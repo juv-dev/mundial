@@ -28,7 +28,25 @@ export function useSaveResult() {
     }
   }
 
+  const reset = async (matchId: string): Promise<boolean> => {
+    setSaving(true)
+    setError(null)
+    try {
+      const result = await source.resetResult(matchId)
+      setSaving(false)
+      if (!result.ok) {
+        setError(result.error || 'Error al resetear el resultado')
+        return false
+      }
+      return true
+    } catch (err) {
+      setSaving(false)
+      setError(err instanceof Error ? err.message : 'Error inesperado al resetear')
+      return false
+    }
+  }
+
   const clearError = () => setError(null)
 
-  return { save, saving, error, clearError }
+  return { save, reset, saving, error, clearError }
 }

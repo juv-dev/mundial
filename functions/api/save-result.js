@@ -17,15 +17,15 @@ export async function onRequest(context) {
   }
 
   try {
-    const {
-      matchId,
-      homeScore,
-      awayScore,
-      homePens,
-      awayPens,
-      supabaseUrl,
-      supabaseKey,
-    } = await request.json()
+    const raw = await request.json()
+    const { matchId, supabaseUrl, supabaseKey } = raw
+
+    // Accept both camelCase (homeScore) and snake_case (home_score) from the client
+    const homeScore = raw.homeScore ?? raw.home_score ?? null
+    const awayScore = raw.awayScore ?? raw.away_score ?? null
+    const homePens  = raw.homePens  ?? raw.home_pens  ?? null
+    const awayPens  = raw.awayPens  ?? raw.away_pens  ?? null
+    const resetOnly = raw.resetOnly === true
 
     if (!supabaseUrl || !supabaseKey) {
       return respond({ error: 'Supabase configuration missing' }, 500)
@@ -33,14 +33,23 @@ export async function onRequest(context) {
 
     const url = `${supabaseUrl}/rest/v1/matches?id=eq.${encodeURIComponent(matchId)}&select=*`
 
-    const body = {
-      home_score: homeScore,
-      away_score: awayScore,
-      home_pens: homePens ?? null,
-      away_pens: awayPens ?? null,
-      status: 'finished',
-      updated_at: new Date().toISOString(),
-    }
+    const patchBody = resetOnly
+      ? {
+          home_score: null,
+          away_score: null,
+          home_pens: null,
+          away_pens: null,
+          status: 'scheduled',
+          updated_at: new Date().toISOString(),
+        }
+      : {
+          home_score: homeScore,
+          away_score: awayScore,
+          home_pens: homePens,
+          away_pens: awayPens,
+          status: 'finished',
+          updated_at: new Date().toISOString(),
+        }
 
     const response = await fetch(url, {
       method: 'PATCH',
@@ -51,7 +60,7 @@ export async function onRequest(context) {
         Accept: 'application/json',
         Prefer: 'return=representation',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(patchBody),
     })
 
     if (!response.ok) {

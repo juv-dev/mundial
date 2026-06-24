@@ -98,8 +98,7 @@ export class SupabaseDataSource implements DataSource {
     }
   }
 
-  async saveResult(
-    matchId: string,
+  async saveResult(    matchId: string,
     homeScore: number,
     awayScore: number,
     penalties: [number, number] | undefined,
@@ -136,6 +135,38 @@ export class SupabaseDataSource implements DataSource {
     }
   }
 
+  async resetResult(matchId: string): Promise<SaveResult> {
+    const payload = {
+      home_score: null,
+      away_score: null,
+      home_pens: null,
+      away_pens: null,
+      status: 'scheduled' as const,
+      updated_at: new Date().toISOString(),
+    }
+
+    try {
+      const updated = import.meta.env.DEV
+        ? await this.patchDirect(matchId, payload)
+        : await this.patchViaProxy(matchId, payload, true)
+
+      const saved = updated.length > 0 ? rowToMatch(updated[0] as DbRow) : null
+      this.snapshot = {
+        ...this.snapshot,
+        matches: this.snapshot.matches.map((m) =>
+          m.id === matchId
+            ? saved ?? { ...m, homeScore: null as unknown as number, awayScore: null as unknown as number, homePens: undefined, awayPens: undefined, status: 'scheduled' }
+            : m,
+        ),
+        updatedAt: Date.now(),
+      }
+      this.bus.notify()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  }
+
   private async patchDirect(
     matchId: string,
     payload: Record<string, unknown>,
@@ -152,6 +183,7 @@ export class SupabaseDataSource implements DataSource {
   private async patchViaProxy(
     matchId: string,
     payload: Record<string, unknown>,
+    resetOnly = false,
   ): Promise<DbRow[]> {
     const res = await fetch('/api/save-result', {
       method: 'POST',
@@ -160,6 +192,7 @@ export class SupabaseDataSource implements DataSource {
         matchId,
         supabaseUrl,
         supabaseKey: SUPABASE_ANON_KEY,
+        resetOnly,
         ...payload,
       }),
     })
