@@ -6,7 +6,7 @@ import { useSaveResult } from '../hooks/useSaveResult'
 
 export function MatchCard({ match }: { match: Match }) {
   const { formatDateTime } = useLocale()
-  const { save, saving, conflict, error, clearConflict, clearError } = useSaveResult()
+  const { save, reset, saving, conflict, error, clearConflict, clearError } = useSaveResult()
 
   const [editingOfficial, setEditingOfficial] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
@@ -50,6 +50,14 @@ export function MatchCard({ match }: { match: Match }) {
     const pens: [number, number] | undefined =
       isKnockout && Number.isFinite(ph) && Number.isFinite(pa) && h === a ? [ph, pa] : undefined
     const ok = await save(match.id, h, a, pens, match.updatedAt ?? '')
+    if (ok) {
+      setEditingOfficial(false)
+      setJustSaved(true)
+    }
+  }
+
+  const handleReset = async () => {
+    const ok = await reset(match.id)
     if (ok) {
       setEditingOfficial(false)
       setJustSaved(true)
@@ -135,9 +143,9 @@ export function MatchCard({ match }: { match: Match }) {
               parseInt(officialHome, 10) === parseInt(officialAway, 10) && (
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <span className="text-[11px] text-tiza">Penales:</span>
-                  {scoreInput(officialPenHome, setOfficialPenHome)}
+                  {scoreInput(officialPenHome, setOfficialPenHome, 'sm')}
                   <span className="text-tiza/40 text-xs">–</span>
-                  {scoreInput(officialPenAway, setOfficialPenAway)}
+                  {scoreInput(officialPenAway, setOfficialPenAway, 'sm')}
                 </div>
               )}
 
@@ -177,12 +185,23 @@ export function MatchCard({ match }: { match: Match }) {
               <span className="text-[11px] text-tiza">pen {match.homePens}–{match.awayPens}</span>
             )}
             {playable && (
-              <button
-                onClick={startEditOfficial}
-                className="text-[11px] font-semibold text-mag border border-mag/30 rounded-lg px-3 py-1 hover:bg-mag/10 transition"
-              >
-                Corregir
-              </button>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={startEditOfficial}
+                  className="text-[11px] font-semibold text-mag border border-mag/30 rounded-lg px-3 py-1 hover:bg-mag/10 transition"
+                >
+                  Corregir
+                </button>
+                {finished && (
+                  <button
+                    onClick={handleReset}
+                    disabled={saving}
+                    className="text-[11px] font-semibold text-rojo border border-rojo/30 rounded-lg px-3 py-1 hover:bg-rojo/10 disabled:opacity-50 transition"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}

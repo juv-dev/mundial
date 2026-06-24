@@ -105,7 +105,7 @@ export class SupabaseDataSource implements DataSource {
     penalties: [number, number] | undefined,
     expectedUpdatedAt: string,
   ): Promise<SaveResult> {
-    const updatePayload = {
+    const payload = {
       home_score: homeScore,
       away_score: awayScore,
       home_pens: penalties?.[0] ?? null,
@@ -113,43 +113,67 @@ export class SupabaseDataSource implements DataSource {
       status: 'finished' as const,
       updated_at: new Date().toISOString(),
     }
+    return this.applyUpdate(matchId, payload, expectedUpdatedAt, 'saved')
+  }
 
-    const updated = await (import.meta.env.DEV
-      ? this.patchDirect(matchId, expectedUpdatedAt, updatePayload)
-      : this.patchViaProxy(matchId, expectedUpdatedAt, updatePayload))
-
-    if (!updated || updated.length === 0) {
-      const { data: current } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('id', matchId)
-        .single()
-      if (!current) return { ok: false, conflict: false, error: 'Match not found' }
-      return { ok: false, conflict: true, current: rowToMatch(current as DbRow) }
+  async resetResult(matchId: string): Promise<SaveResult> {
+    const payload = {
+      home_score: 0,
+      away_score: 0,
+      home_pens: null,
+      away_pens: null,
+      status: 'scheduled' as const,
+      updated_at: new Date().toISOString(),
     }
+    return this.applyUpdate(matchId, payload, '', 'reset')
+  }
 
-    const saved = rowToMatch(updated[0] as DbRow)
-    this.snapshot = {
-      ...this.snapshot,
-      matches: this.snapshot.matches.map((m) => (m.id === saved.id ? saved : m)),
-      updatedAt: Date.now(),
+  private async applyUpdate(
+    matchId: string,
+    payload: Record<string, unknown>,
+    expectedUpdatedAt: string,
+    mode: 'saved' | 'reset',
+  ): Promise<SaveResult> {
+    try {
+      const updated = await (import.meta.env.DEV
+        ? this.patchDirect(matchId, payload, expectedUpdatedAt || undefined)
+        : this.patchViaProxy(matchId, expectedUpdatedAt, payload))
+
+      if (!updated || updated.length === 0) {
+        if (mode === 'saved') {
+          const { data: current } = await supabase
+            .from('matches')
+            .select('*')
+            .eq('id', matchId)
+            .single()
+          if (!current) return { ok: false, conflict: false, error: 'Match not found' }
+          return { ok: false, conflict: true, current: rowToMatch(current as DbRow) }
+        }
+        return { ok: false, conflict: false, error: 'No se pudo reiniciar el resultado' }
+      }
+
+      const saved = rowToMatch(updated[0] as DbRow)
+      this.snapshot = {
+        ...this.snapshot,
+        matches: this.snapshot.matches.map((m) => (m.id === saved.id ? saved : m)),
+        updatedAt: Date.now(),
+      }
+      this.bus.notify()
+
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, conflict: false, error: err instanceof Error ? err.message : String(err) }
     }
-    this.bus.notify()
-
-    return { ok: true }
   }
 
   private async patchDirect(
     matchId: string,
-    expectedUpdatedAt: string,
     payload: Record<string, unknown>,
+    expectedUpdatedAt?: string,
   ): Promise<DbRow[]> {
-    const { data, error } = await supabase
-      .from('matches')
-      .update(payload)
-      .eq('id', matchId)
-      .eq('updated_at', expectedUpdatedAt)
-      .select()
+    let query = supabase.from('matches').update(payload).eq('id', matchId)
+    if (expectedUpdatedAt) query = query.eq('updated_at', expectedUpdatedAt)
+    const { data, error } = await query.select()
     if (error) throw error
     return (data ?? []) as DbRow[]
   }

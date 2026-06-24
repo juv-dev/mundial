@@ -17,4 +17,5 @@ export interface DataSource {
     penalties: [number, number] | undefined,
     expectedUpdatedAt: string,
   ): Promise<SaveResult>
+  resetResult(matchId: string): Promise<SaveResult>
 }

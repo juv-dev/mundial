@@ -30,8 +30,21 @@ export function useSaveResult() {
     return result.ok
   }
 
+  const reset = async (matchId: string): Promise<boolean> => {
+    setSaving(true)
+    setConflict(null)
+    setError(null)
+    const result = await source.resetResult(matchId)
+    setSaving(false)
+    if (!result.ok && !result.conflict) {
+      setError(result.error || 'Error al reiniciar el resultado')
+      return false
+    }
+    return result.ok
+  }
+
   const clearConflict = () => setConflict(null)
   const clearError = () => setError(null)
 
-  return { save, saving, conflict, error, clearConflict, clearError }
+  return { save, reset, saving, conflict, error, clearConflict, clearError }
 }
