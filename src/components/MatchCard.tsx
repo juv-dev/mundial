@@ -8,7 +8,7 @@ import { usePredictions } from '../hooks/usePredictions'
 export function MatchCard({ match }: { match: Match }) {
   const { formatDateTime } = useLocale()
   const { participant } = useParticipant()
-  const { predictions, allParticipants, upsert } = usePredictions()
+  const { predictions, upsert } = usePredictions()
 
   const [predHome, setPredHome] = useState('')
   const [predAway, setPredAway] = useState('')
@@ -26,8 +26,6 @@ export function MatchCard({ match }: { match: Match }) {
   const myPred = participant
     ? predictions.find((p) => p.matchId === match.id && p.participant === participant)
     : undefined
-
-  const otherParticipants = allParticipants.filter((p) => p !== participant)
 
   useEffect(() => {
     predSeededRef.current = false
@@ -134,7 +132,7 @@ export function MatchCard({ match }: { match: Match }) {
       {playable && (
         <div className="border-t border-cal/[0.08] pt-3 mb-3">
           <span className="text-[9px] uppercase tracking-[0.12em] text-tiza/50 font-semibold mb-2 block">
-            {participant ? `Resultado de ${participant}` : 'Tu resultado'}
+            Tu resultado
           </span>
 
           {!participant ? (
@@ -176,43 +174,6 @@ export function MatchCard({ match }: { match: Match }) {
         </div>
       )}
 
-      {playable && (
-        <div className="border-t border-cal/[0.08] pt-3">
-          <span className="text-[9px] uppercase tracking-[0.12em] text-tiza/50 font-semibold mb-2 block">
-            Resultados de otros
-          </span>
-
-          {otherParticipants.length === 0 ? (
-            <p className="text-[11px] text-tiza/50">Sin resultados aún.</p>
-          ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {otherParticipants.map((name) => {
-                const pred = predictions.find(
-                  (p) => p.matchId === match.id && p.participant === name,
-                )
-                return (
-                  <span
-                    key={name}
-                    className="text-[11px] bg-cal/[0.05] rounded-full px-2.5 py-1 leading-none"
-                  >
-                    <span className="font-semibold text-cal">{name}:</span>{' '}
-                    {pred ? (
-                      <>
-                        {pred.homeScore}–{pred.awayScore}
-                        {pred.homePens != null && pred.awayPens != null
-                          ? ` · pen ${pred.homePens}–${pred.awayPens}`
-                          : ''}
-                      </>
-                    ) : (
-                      <span className="text-tiza/40">sin resultado</span>
-                    )}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
