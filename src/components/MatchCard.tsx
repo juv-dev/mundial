@@ -6,7 +6,7 @@ import { useSaveResult } from '../hooks/useSaveResult'
 
 export function MatchCard({ match }: { match: Match }) {
   const { formatDateTime } = useLocale()
-  const { save, saving, error, clearError } = useSaveResult()
+  const { save, reset, saving, error, clearError } = useSaveResult()
 
   const [editingOfficial, setEditingOfficial] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
@@ -54,13 +54,17 @@ export function MatchCard({ match }: { match: Match }) {
     }
   }
 
-  const handleReset = () => {
-    setOfficialHome('')
-    setOfficialAway('')
-    setOfficialPenHome('')
-    setOfficialPenAway('')
+  const handleReset = async () => {
     clearError()
-    setEditingOfficial(true)
+    const ok = await reset(match.id)
+    if (ok) {
+      setEditingOfficial(false)
+      setJustSaved(false)
+      setOfficialHome('')
+      setOfficialAway('')
+      setOfficialPenHome('')
+      setOfficialPenAway('')
+    }
   }
 
   const showOfficialInputs = (!finished && !justSaved) || editingOfficial

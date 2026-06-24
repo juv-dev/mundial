@@ -15,4 +15,5 @@ export interface DataSource {
     awayScore: number,
     penalties: [number, number] | undefined,
   ): Promise<SaveResult>
+  resetResult(matchId: string): Promise<SaveResult>
 }
