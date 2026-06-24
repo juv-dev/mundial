@@ -17,15 +17,11 @@ export class SupabasePredictionSource implements PredictionSource {
 
   subscribe = this.bus.subscribe.bind(this.bus)
 
-  private notify(): void {
-    this.bus.notify()
-  }
-
   private async load(): Promise<void> {
     const { data, error } = await supabase.from('predictions').select('*')
     if (error || !data) return
     this.predictions = (data as DbPrediction[]).map(rowToPrediction)
-    this.notify()
+    this.bus.notify()
   }
 
   start(): void {
@@ -77,7 +73,7 @@ export class SupabasePredictionSource implements PredictionSource {
         (p) => !(p.participant === saved.participant && p.matchId === saved.matchId),
       )
       this.predictions = [...others, saved]
-      this.notify()
+      this.bus.notify()
     }
 
     return { ok: true }
